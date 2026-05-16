@@ -27,7 +27,8 @@ function fnRead() {
   try {
     var vs  = JSON.parse(localStorage.getItem('settings_Vehicle') || '{}');
     var tc  = (vs.tuningConfig && vs.tuningConfig._value) ? vs.tuningConfig._value : {};
-    var spd = parseFloat(localStorage.getItem('config-vehicle-speed') || '1');
+    var sg  = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
+    var spd = sg.speedFactor != null ? parseFloat(sg.speedFactor) : 1;
     return {
       ok: true,
       speedMult:             isFinite(spd) ? spd : 1,
@@ -52,7 +53,9 @@ function fnApply(data) {
     return n;
   }
   try {
-    localStorage.setItem('config-vehicle-speed', String(sv(data.speedMult, 1, 0.1, 50)));
+    var sg = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
+    sg.speedFactor = sv(data.speedMult, 1, 0.001, 100);
+    localStorage.setItem('settings_Gameplay', JSON.stringify(sg));
     var vs  = JSON.parse(localStorage.getItem('settings_Vehicle') || '{}');
     vs.steerSpeedFactor = sv(data.steerSpeedFactor, vs.steerSpeedFactor != null ? vs.steerSpeedFactor : 0.75, 0.1, 3);
     var tc  = vs.tuningConfig || {};
@@ -84,10 +87,12 @@ function fnApplyProgressive(data) {
   }
   try {
     // Sauvegarder la vitesse cible pour content.js
-    var target = String(sv(data.speedMult, 1, 0.1, 50));
+    var target = String(sv(data.speedMult, 1, 0.001, 100));
     sessionStorage.setItem('sr_prog_target', target);
     // Phase 1 : vitesse = 1 pour laisser la map charger
-    localStorage.setItem('config-vehicle-speed', '1');
+    var sg0 = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
+    sg0.speedFactor = 1;
+    localStorage.setItem('settings_Gameplay', JSON.stringify(sg0));
     // Appliquer les autres params normalement
     var vs  = JSON.parse(localStorage.getItem('settings_Vehicle') || '{}');
     vs.steerSpeedFactor = sv(data.steerSpeedFactor, vs.steerSpeedFactor != null ? vs.steerSpeedFactor : 0.75, 0.1, 3);
@@ -112,7 +117,9 @@ function fnApplyProgressive(data) {
 
 function fnReset() {
   try {
-    localStorage.setItem('config-vehicle-speed', '1');
+    var sgr = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
+    sgr.speedFactor = 1;
+    localStorage.setItem('settings_Gameplay', JSON.stringify(sgr));
     var vs  = JSON.parse(localStorage.getItem('settings_Vehicle') || '{}');
     vs.steerSpeedFactor = 0.75;
     var def = { tyreFriction:1.6, kineticFrictionFactor:0.85, tyreStiffness:1, rearStability:0.5, steerAssist:0.8, counterSteerAssist:0, lockDiff:false };

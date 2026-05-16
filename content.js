@@ -26,6 +26,45 @@
     window.__sr_log.push({ ms: Date.now() - T0, msg: msg, type: type || 'info' });
   }
 
+  // ── Intercepteur localStorage — inspecte settings_Vehicle complet ───────────
+  var _lsSniffEnd = Date.now() + 12000;
+  var _lsSeen     = {};
+  var _lsOrigGet  = Storage.prototype.getItem;
+  var _lsOrigSet  = Storage.prototype.setItem;
+
+  Storage.prototype.getItem = function (key) {
+    var val = _lsOrigGet.call(this, key);
+    if (this === localStorage && !_lsSeen['g' + key] && Date.now() < _lsSniffEnd) {
+      _lsSeen['g' + key] = true;
+      log('[LS.get] ' + key + ' = ' + (val !== null ? String(val).slice(0, 60) : 'null'), 'info');
+    }
+    return val;
+  };
+
+  Storage.prototype.setItem = function (key, val) {
+    if (this === localStorage && Date.now() < _lsSniffEnd) {
+      if (key === 'settings_Vehicle') {
+        try {
+          var sv = JSON.parse(val);
+          log('[SV] speedFactor=' + sv.speedFactor + ' type=' + sv.type + ' mode=' + sv.mode, 'warn');
+          var tc  = sv.tuningConfig || {};
+          var tcv = tc._value || {};
+          var keys = Object.keys(tcv);
+          if (keys.length) {
+            keys.forEach(function (k) { log('[SV.tuning] ' + k + ' = ' + tcv[k], 'warn'); });
+          } else {
+            log('[SV.tuning] _value vide — keys racine: ' + Object.keys(tc).join(', '), 'warn');
+          }
+        } catch (e) { log('[SV] erreur parse: ' + e.message, 'error'); }
+      } else if (!_lsSeen['s' + key]) {
+        _lsSeen['s' + key] = true;
+        log('[LS.set] ' + key, 'info');
+      }
+    }
+    return _lsOrigSet.call(this, key, val);
+  };
+  log('Intercepteur LS actif (12 s) — tous les champs de settings_Vehicle loggés', 'ok');
+
   // ── Démarrage progressif ────────────────────────────────────────────────────
   // Le popup sauvegarde sr_prog_target dans sessionStorage avant de recharger à ×1.
   // Ici on détecte ça et on applique la vraie vitesse après 8 s (map chargée).
@@ -34,7 +73,11 @@
     sessionStorage.removeItem('sr_prog_target');
     log('Démarrage progressif : ×' + _progTarget + ' dans 8 s — la map charge…', 'ok');
     setTimeout(function () {
-      localStorage.setItem('config-vehicle-speed', _progTarget);
+      try {
+        var _sg = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
+        _sg.speedFactor = parseFloat(_progTarget);
+        localStorage.setItem('settings_Gameplay', JSON.stringify(_sg));
+      } catch (_e) {}
       log('Démarrage progressif : ×' + _progTarget + ' appliqué — reload…', 'ok');
       location.reload();
     }, 8000);
