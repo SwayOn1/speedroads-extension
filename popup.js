@@ -21,16 +21,18 @@ const PARAMS = [
   // Poids
   { g:'Poids',       key:'weightFactor',           label:'Transfert de poids',    hint:'Effet de caisse dans les virages (défaut 0.15)', step:0.01, min:0,    max:2    },
   { g:'Poids',       key:'wheelMassFactor',        label:'Masse des roues',       hint:'Inertie des roues (défaut 0.2)',                 step:0.01, min:0,    max:2    },
+  // Freinage (settings_Gameplay)
+  { g:'Freinage',    key:'softBrakeForce', src:'gp', label:'Frein progressif',     hint:'Freinage auto au relâcher accélérateur (0=off)', step:0.05, min:0,    max:1    },
   // Extra
   { g:'Extra',       key:'lockDiff',               label:'Différentiel bloqué',   hint:'0 = ouvert · 1 = bloqué (hors-route)',          step:1,    min:0,    max:1    },
 ];
 
 // ── Présets de mode ────────────────────────────────────────────────────────────
 const MODES = {
-  normal: { gripFactor:1,    tyreFriction:1.6,  kineticFrictionFactor:0.85, tyreStiffness:1,   rearStability:0.5,  steerSpeedFactor:0.75, steerAssist:0.8,  counterSteerAssist:0,   lockDiff:0, shockTravel:0.12, shockForce:3,  damping:8,  weightFactor:0.15, wheelMassFactor:0.2 },
-  grip:   { gripFactor:2,    tyreFriction:4,    kineticFrictionFactor:0.95, tyreStiffness:2,   rearStability:1.0,  steerSpeedFactor:0.75, steerAssist:0.95, counterSteerAssist:0.6, lockDiff:0, shockTravel:0.1,  shockForce:4,  damping:10, weightFactor:0.1,  wheelMassFactor:0.2 },
-  drift:  { gripFactor:0.3,  tyreFriction:0.5,  kineticFrictionFactor:0.2,  tyreStiffness:0.5, rearStability:0.05, steerSpeedFactor:1.5,  steerAssist:0.1,  counterSteerAssist:0,   lockDiff:0, shockTravel:0.15, shockForce:2,  damping:6,  weightFactor:0.2,  wheelMassFactor:0.2 },
-  vol:    { gripFactor:0.2,  tyreFriction:0.05, kineticFrictionFactor:0.05, tyreStiffness:2.0, rearStability:0,    steerSpeedFactor:2.0,  steerAssist:0.9,  counterSteerAssist:0.5, lockDiff:0, shockTravel:0.05, shockForce:1,  damping:3,  weightFactor:0.05, wheelMassFactor:0.1 },
+  normal: { softBrakeForce:0,   gripFactor:1,   tyreFriction:1.6,  kineticFrictionFactor:0.85, tyreStiffness:1,   rearStability:0.5,  steerSpeedFactor:0.75, steerAssist:0.8,  counterSteerAssist:0,   lockDiff:0, shockTravel:0.12, shockForce:3,  damping:8,  weightFactor:0.15, wheelMassFactor:0.2 },
+  grip:   { softBrakeForce:0.3, gripFactor:2,   tyreFriction:4,    kineticFrictionFactor:0.95, tyreStiffness:2,   rearStability:1.0,  steerSpeedFactor:0.75, steerAssist:0.95, counterSteerAssist:0.6, lockDiff:0, shockTravel:0.1,  shockForce:4,  damping:10, weightFactor:0.1,  wheelMassFactor:0.2 },
+  drift:  { softBrakeForce:0,   gripFactor:0.3, tyreFriction:0.5,  kineticFrictionFactor:0.2,  tyreStiffness:0.5, rearStability:0.05, steerSpeedFactor:1.5,  steerAssist:0.1,  counterSteerAssist:0,   lockDiff:0, shockTravel:0.15, shockForce:2,  damping:6,  weightFactor:0.2,  wheelMassFactor:0.2 },
+  vol:    { softBrakeForce:0,   gripFactor:0.2, tyreFriction:0.05, kineticFrictionFactor:0.05, tyreStiffness:2.0, rearStability:0,    steerSpeedFactor:2.0,  steerAssist:0.9,  counterSteerAssist:0.5, lockDiff:0, shockTravel:0.05, shockForce:1,  damping:3,  weightFactor:0.05, wheelMassFactor:0.1 },
 };
 
 // ── Fonctions page context (world MAIN) ────────────────────────────────────────
@@ -46,6 +48,7 @@ function fnRead() {
       ok: true,
       speedMult:             isFinite(spd) ? spd : 1,
       gripFactor:            sg.gripFactor            != null ? sg.gripFactor            : 1,
+      softBrakeForce:        sg.softBrakeForce        != null ? sg.softBrakeForce        : 0,
       tyreFriction:          tc.tyreFriction          != null ? tc.tyreFriction          : 1.6,
       kineticFrictionFactor: tc.kineticFrictionFactor != null ? tc.kineticFrictionFactor : 0.85,
       tyreStiffness:         tc.tyreStiffness         != null ? tc.tyreStiffness         : 1,
@@ -74,7 +77,8 @@ function fnApply(data) {
   try {
     var sg = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
     sg.speedFactor = sv(data.speedMult,   1, 0.001, 1000000);
-    sg.gripFactor  = sv(data.gripFactor,  1, 0.01,  2);
+    sg.gripFactor      = sv(data.gripFactor,      1, 0.01, 2);
+    sg.softBrakeForce  = sv(data.softBrakeForce,  0, 0,    1);
     localStorage.setItem('settings_Gameplay', JSON.stringify(sg));
     var vs  = JSON.parse(localStorage.getItem('settings_Vehicle') || '{}');
     vs.steerSpeedFactor = sv(data.steerSpeedFactor, vs.steerSpeedFactor != null ? vs.steerSpeedFactor : 0.75, 0.1, 5);
@@ -116,8 +120,9 @@ function fnApplyProgressive(data) {
     sessionStorage.setItem('sr_prog_target', target);
     // Phase 1 : vitesse = 1 pour laisser la map charger
     var sg0 = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
-    sg0.speedFactor = 1;
-    sg0.gripFactor  = sv(data.gripFactor, 1, 0.01, 2);
+    sg0.speedFactor     = 1;
+    sg0.gripFactor      = sv(data.gripFactor,     1, 0.01, 2);
+    sg0.softBrakeForce  = sv(data.softBrakeForce, 0, 0,    1);
     localStorage.setItem('settings_Gameplay', JSON.stringify(sg0));
     // Appliquer les autres params normalement
     var vs  = JSON.parse(localStorage.getItem('settings_Vehicle') || '{}');
@@ -144,8 +149,9 @@ function fnApplyProgressive(data) {
 function fnReset() {
   try {
     var sgr = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
-    sgr.speedFactor = 1;
-    sgr.gripFactor  = 1;
+    sgr.speedFactor    = 1;
+    sgr.gripFactor     = 1;
+    sgr.softBrakeForce = 0;
     localStorage.setItem('settings_Gameplay', JSON.stringify(sgr));
     var vs  = JSON.parse(localStorage.getItem('settings_Vehicle') || '{}');
     vs.steerSpeedFactor = 0.75;
