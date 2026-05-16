@@ -1,23 +1,36 @@
 'use strict';
 
-// ── Paramètres avancés (vitesse = section dédiée en haut) ─────────────────────
+// ── Paramètres avancés ────────────────────────────────────────────────────────
+// Sources : settings_Gameplay (gp) ou settings_Vehicle.tuningConfig (tc)
 const PARAMS = [
-  { g:'Grip',      key:'tyreFriction',          label:'Adhérence route',        hint:'↑ plus de grip  ↓ plus de drift',         step:0.1,  min:0.2, max:4   },
-  { g:'Grip',      key:'kineticFrictionFactor',  label:'Résistance à la glisse', hint:'↑ récupère vite  ↓ glisse longtemps',     step:0.05, min:0.1, max:1   },
-  { g:'Grip',      key:'tyreStiffness',          label:'Réactivité des pneus',   hint:'↑ pneus nerveux  ↓ pneus mous',           step:0.05, min:0.1, max:2   },
-  { g:'Grip',      key:'rearStability',          label:'Stabilité arrière',      hint:'↑ moins de dérapage arrière',             step:0.05, min:0,   max:1   },
-  { g:'Direction', key:'steerSpeedFactor',       label:'Rapidité de braquage',   hint:'↑ volant nerveux  ↓ volant doux',         step:0.05, min:0.1, max:3   },
-  { g:'Direction', key:'steerAssist',            label:'Assistance volant',      hint:'↑ aide auto dans les virages',            step:0.05, min:0,   max:1   },
-  { g:'Direction', key:'counterSteerAssist',     label:'Aide contre-braquage',   hint:'↑ corrige les dérapages automatiquement', step:0.05, min:0,   max:1   },
-  { g:'Extra',     key:'lockDiff',               label:'Différentiel bloqué',    hint:'0 = ouvert · 1 = bloqué (hors-route)',    step:1,    min:0,   max:1   },
+  // Grip global (settings_Gameplay — limite jeu : max 2)
+  { g:'Grip global', key:'gripFactor', src:'gp', label:'Grip global',            hint:'Multiplicateur grip latéral (max 2 selon jeu)', step:0.05, min:0.01, max:2    },
+  // Pneus (tuningConfig)
+  { g:'Pneus',       key:'tyreFriction',          label:'Adhérence pneus',       hint:'↑ plus de grip  ↓ plus de drift',               step:0.1,  min:0.01, max:10   },
+  { g:'Pneus',       key:'kineticFrictionFactor',  label:'Résistance à la glisse',hint:'↑ récupère vite  ↓ glisse longtemps',           step:0.05, min:0,    max:2    },
+  { g:'Pneus',       key:'tyreStiffness',          label:'Rigidité pneus',        hint:'↑ pneus nerveux  ↓ pneus mous',                 step:0.05, min:0,    max:10   },
+  { g:'Pneus',       key:'rearStability',          label:'Stabilité arrière',     hint:'↑ moins de dérapage arrière',                   step:0.05, min:0,    max:1    },
+  // Direction
+  { g:'Direction',   key:'steerSpeedFactor',       label:'Rapidité de braquage',  hint:'↑ volant nerveux  ↓ volant doux',               step:0.05, min:0.1,  max:5    },
+  { g:'Direction',   key:'steerAssist',            label:'Assistance volant',     hint:'↑ aide auto dans les virages',                  step:0.05, min:0,    max:1    },
+  { g:'Direction',   key:'counterSteerAssist',     label:'Aide contre-braquage',  hint:'↑ corrige les dérapages automatiquement',       step:0.05, min:0,    max:1    },
+  // Suspension
+  { g:'Suspension',  key:'shockTravel',            label:'Débattement suspension',hint:'Distance de compression (défaut 0.12)',          step:0.01, min:0,    max:1    },
+  { g:'Suspension',  key:'shockForce',             label:'Dureté ressorts',       hint:'Force des amortisseurs (défaut 3)',              step:0.5,  min:0,    max:30   },
+  { g:'Suspension',  key:'damping',                label:'Amortissement',         hint:'Résistance aux rebonds (défaut 8)',              step:0.5,  min:0,    max:50   },
+  // Poids
+  { g:'Poids',       key:'weightFactor',           label:'Transfert de poids',    hint:'Effet de caisse dans les virages (défaut 0.15)', step:0.01, min:0,    max:2    },
+  { g:'Poids',       key:'wheelMassFactor',        label:'Masse des roues',       hint:'Inertie des roues (défaut 0.2)',                 step:0.01, min:0,    max:2    },
+  // Extra
+  { g:'Extra',       key:'lockDiff',               label:'Différentiel bloqué',   hint:'0 = ouvert · 1 = bloqué (hors-route)',          step:1,    min:0,    max:1    },
 ];
 
 // ── Présets de mode ────────────────────────────────────────────────────────────
 const MODES = {
-  normal: { tyreFriction:1.6,  kineticFrictionFactor:0.85, tyreStiffness:1,   rearStability:0.5,  steerSpeedFactor:0.75, steerAssist:0.8,  counterSteerAssist:0,   lockDiff:0 },
-  grip:   { tyreFriction:3.5,  kineticFrictionFactor:0.95, tyreStiffness:1.8, rearStability:1.0,  steerSpeedFactor:0.75, steerAssist:0.95, counterSteerAssist:0.6, lockDiff:0 },
-  drift:  { tyreFriction:0.6,  kineticFrictionFactor:0.25, tyreStiffness:0.6, rearStability:0.05, steerSpeedFactor:1.5,  steerAssist:0.1,  counterSteerAssist:0,   lockDiff:0 },
-  vol:    { tyreFriction:0.05, kineticFrictionFactor:0.05, tyreStiffness:2.0, rearStability:0,    steerSpeedFactor:2.0,  steerAssist:0.9,  counterSteerAssist:0.5, lockDiff:0 },
+  normal: { gripFactor:1,    tyreFriction:1.6,  kineticFrictionFactor:0.85, tyreStiffness:1,   rearStability:0.5,  steerSpeedFactor:0.75, steerAssist:0.8,  counterSteerAssist:0,   lockDiff:0, shockTravel:0.12, shockForce:3,  damping:8,  weightFactor:0.15, wheelMassFactor:0.2 },
+  grip:   { gripFactor:2,    tyreFriction:4,    kineticFrictionFactor:0.95, tyreStiffness:2,   rearStability:1.0,  steerSpeedFactor:0.75, steerAssist:0.95, counterSteerAssist:0.6, lockDiff:0, shockTravel:0.1,  shockForce:4,  damping:10, weightFactor:0.1,  wheelMassFactor:0.2 },
+  drift:  { gripFactor:0.3,  tyreFriction:0.5,  kineticFrictionFactor:0.2,  tyreStiffness:0.5, rearStability:0.05, steerSpeedFactor:1.5,  steerAssist:0.1,  counterSteerAssist:0,   lockDiff:0, shockTravel:0.15, shockForce:2,  damping:6,  weightFactor:0.2,  wheelMassFactor:0.2 },
+  vol:    { gripFactor:0.2,  tyreFriction:0.05, kineticFrictionFactor:0.05, tyreStiffness:2.0, rearStability:0,    steerSpeedFactor:2.0,  steerAssist:0.9,  counterSteerAssist:0.5, lockDiff:0, shockTravel:0.05, shockForce:1,  damping:3,  weightFactor:0.05, wheelMassFactor:0.1 },
 };
 
 // ── Fonctions page context (world MAIN) ────────────────────────────────────────
@@ -32,6 +45,7 @@ function fnRead() {
     return {
       ok: true,
       speedMult:             isFinite(spd) ? spd : 1,
+      gripFactor:            sg.gripFactor            != null ? sg.gripFactor            : 1,
       tyreFriction:          tc.tyreFriction          != null ? tc.tyreFriction          : 1.6,
       kineticFrictionFactor: tc.kineticFrictionFactor != null ? tc.kineticFrictionFactor : 0.85,
       tyreStiffness:         tc.tyreStiffness         != null ? tc.tyreStiffness         : 1,
@@ -40,6 +54,11 @@ function fnRead() {
       steerAssist:           tc.steerAssist           != null ? tc.steerAssist           : 0.8,
       counterSteerAssist:    tc.counterSteerAssist    != null ? tc.counterSteerAssist    : 0,
       lockDiff:              tc.lockDiff ? 1 : 0,
+      shockTravel:           tc.shockTravel           != null ? tc.shockTravel           : 0.12,
+      shockForce:            tc.shockForce            != null ? tc.shockForce            : 3,
+      damping:               tc.damping               != null ? tc.damping               : 8,
+      weightFactor:          tc.weightFactor          != null ? tc.weightFactor          : 0.15,
+      wheelMassFactor:       tc.wheelMassFactor       != null ? tc.wheelMassFactor       : 0.2,
     };
   } catch (e) { return { ok: false, error: e.message }; }
 }
@@ -54,20 +73,26 @@ function fnApply(data) {
   }
   try {
     var sg = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
-    sg.speedFactor = sv(data.speedMult, 1, 0.001, 100);
+    sg.speedFactor = sv(data.speedMult,   1, 0.001, 1000000);
+    sg.gripFactor  = sv(data.gripFactor,  1, 0.01,  2);
     localStorage.setItem('settings_Gameplay', JSON.stringify(sg));
     var vs  = JSON.parse(localStorage.getItem('settings_Vehicle') || '{}');
-    vs.steerSpeedFactor = sv(data.steerSpeedFactor, vs.steerSpeedFactor != null ? vs.steerSpeedFactor : 0.75, 0.1, 3);
+    vs.steerSpeedFactor = sv(data.steerSpeedFactor, vs.steerSpeedFactor != null ? vs.steerSpeedFactor : 0.75, 0.1, 5);
     var tc  = vs.tuningConfig || {};
     var cur = tc._value || {};
     var nv  = {
-      tyreFriction:          sv(data.tyreFriction,          cur.tyreFriction          != null ? cur.tyreFriction          : 1.6,  0.2, 4),
-      kineticFrictionFactor: sv(data.kineticFrictionFactor, cur.kineticFrictionFactor != null ? cur.kineticFrictionFactor : 0.85, 0.1, 1),
-      tyreStiffness:         sv(data.tyreStiffness,         cur.tyreStiffness         != null ? cur.tyreStiffness         : 1,    0.1, 2),
-      rearStability:         sv(data.rearStability,         cur.rearStability         != null ? cur.rearStability         : 0.5,  0,   1),
-      steerAssist:           sv(data.steerAssist,           cur.steerAssist           != null ? cur.steerAssist           : 0.8,  0,   1),
-      counterSteerAssist:    sv(data.counterSteerAssist,    cur.counterSteerAssist    != null ? cur.counterSteerAssist    : 0,    0,   1),
+      tyreFriction:          sv(data.tyreFriction,          cur.tyreFriction          != null ? cur.tyreFriction          : 1.6,  0.01, 10),
+      kineticFrictionFactor: sv(data.kineticFrictionFactor, cur.kineticFrictionFactor != null ? cur.kineticFrictionFactor : 0.85, 0,    2),
+      tyreStiffness:         sv(data.tyreStiffness,         cur.tyreStiffness         != null ? cur.tyreStiffness         : 1,    0,    10),
+      rearStability:         sv(data.rearStability,         cur.rearStability         != null ? cur.rearStability         : 0.5,  0,    1),
+      steerAssist:           sv(data.steerAssist,           cur.steerAssist           != null ? cur.steerAssist           : 0.8,  0,    1),
+      counterSteerAssist:    sv(data.counterSteerAssist,    cur.counterSteerAssist    != null ? cur.counterSteerAssist    : 0,    0,    1),
       lockDiff:              sv(data.lockDiff, 0, 0, 1) >= 0.5,
+      shockTravel:           sv(data.shockTravel,           cur.shockTravel           != null ? cur.shockTravel           : 0.12, 0,    1),
+      shockForce:            sv(data.shockForce,            cur.shockForce            != null ? cur.shockForce            : 3,    0,    30),
+      damping:               sv(data.damping,               cur.damping               != null ? cur.damping               : 8,    0,    50),
+      weightFactor:          sv(data.weightFactor,          cur.weightFactor          != null ? cur.weightFactor          : 0.15, 0,    2),
+      wheelMassFactor:       sv(data.wheelMassFactor,       cur.wheelMassFactor       != null ? cur.wheelMassFactor       : 0.2,  0,    2),
     };
     tc._value = Object.assign(cur, nv);
     for (var k in nv) tc[k] = nv[k];
@@ -92,6 +117,7 @@ function fnApplyProgressive(data) {
     // Phase 1 : vitesse = 1 pour laisser la map charger
     var sg0 = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
     sg0.speedFactor = 1;
+    sg0.gripFactor  = sv(data.gripFactor, 1, 0.01, 2);
     localStorage.setItem('settings_Gameplay', JSON.stringify(sg0));
     // Appliquer les autres params normalement
     var vs  = JSON.parse(localStorage.getItem('settings_Vehicle') || '{}');
@@ -119,6 +145,7 @@ function fnReset() {
   try {
     var sgr = JSON.parse(localStorage.getItem('settings_Gameplay') || '{}');
     sgr.speedFactor = 1;
+    sgr.gripFactor  = 1;
     localStorage.setItem('settings_Gameplay', JSON.stringify(sgr));
     var vs  = JSON.parse(localStorage.getItem('settings_Vehicle') || '{}');
     vs.steerSpeedFactor = 0.75;
@@ -187,11 +214,15 @@ document.querySelectorAll('.spd-btn').forEach(btn => {
   });
 });
 document.getElementById('spdMinus').addEventListener('click', () => {
-  const next = +Math.max(0.1, (parseFloat(spdInput.value)||1) - 0.5).toFixed(2);
+  const cur = parseFloat(spdInput.value) || 1;
+  const step = cur >= 100 ? 50 : cur >= 10 ? 5 : 1;
+  const next = +Math.max(0.001, cur - step).toFixed(3);
   spdInput.value = next; setSpdActive(next); markSpdChanged();
 });
 document.getElementById('spdPlus').addEventListener('click', () => {
-  const next = +Math.min(50, (parseFloat(spdInput.value)||1) + 0.5).toFixed(2);
+  const cur = parseFloat(spdInput.value) || 1;
+  const step = cur >= 100 ? 50 : cur >= 10 ? 5 : 1;
+  const next = +Math.min(1000000, cur + step).toFixed(3);
   spdInput.value = next; setSpdActive(next); markSpdChanged();
 });
 spdInput.addEventListener('input', () => { setSpdActive(parseFloat(spdInput.value)); markSpdChanged(); });
