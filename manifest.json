@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Speedroads - Vehicle Stats Editor",
+  "version": "5.1",
+  "description": "Modifie toutes les stats du véhicule dans slowroads.io en temps réel.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://slowroads.io/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://slowroads.io/*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
