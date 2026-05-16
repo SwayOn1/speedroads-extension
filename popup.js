@@ -310,7 +310,7 @@ function markChanged(wrap, inp, orig) {
 function collect() {
   const data = {}, errors = [];
   const spd = parseFloat(spdInput.value);
-  if (isFinite(spd)) data.speedMult = Math.max(0.1, Math.min(50, spd));
+  if (isFinite(spd)) data.speedMult = Math.max(0.001, spd);
   document.querySelectorAll('input[data-key]').forEach(el => {
     const p = PARAMS.find(p => p.key === el.dataset.key);
     if (!el.value) return;
